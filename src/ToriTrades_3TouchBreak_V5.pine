@@ -25,7 +25,6 @@ grp_safe = "Safety Line (Exit)"
 postMaxPivots      = input.int(10, "Max Post-Entry Pivots", minval=2, group=grp_safe)
 safetyMinTouches   = input.int(2, "Min Touches (Safety Diagonal)", minval=2, group=grp_safe)
 minSpacingSafety   = input.int(5, "Min Bars Between Safety Pivots", minval=1, group=grp_safe)
-require2PostPivots = input.bool(true, "Require 2 Post-Entry Pivots for Diagonal", group=grp_safe)
 ratchetSafety      = input.bool(true, "Ratchet Safety (Only Tighten)", group=grp_safe)
 ratchetHystATR     = input.float(0.10, "Ratchet Hysteresis (ATR)", step=0.05, group=grp_safe)
 
@@ -922,8 +921,8 @@ if barstate.islast
             shapeLb := f_delLabel(shapeLb)
 
         if showShapeBounds
-            shapeResRay := f_setRay(shapeResRay, resHoldX1, resHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2)
-            shapeSupRay := f_setRay(shapeSupRay, supHoldX1, supHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2)
+            shapeResRay := f_setSeg(shapeResRay, resHoldX1, resHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2, line.style_solid)
+            shapeSupRay := f_setSeg(shapeSupRay, supHoldX1, supHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2, line.style_solid)
         else
             shapeResRay := f_delLine(shapeResRay)
             shapeSupRay := f_delLine(shapeSupRay)
@@ -1213,9 +1212,9 @@ if inTrade
             array.pop(postHighs_Price)
             array.pop(postHighs_Idx)
 
-    bool pivCountOK = tradeDir == 1 ? array.size(postLows_Price) >= (require2PostPivots ? 2 : 1) : array.size(postHighs_Price) >= (require2PostPivots ? 2 : 1)
+    bool hasDiagPair = tradeDir == 1 ? array.size(postLows_Price) >= 2 : array.size(postHighs_Price) >= 2
 
-    if pivCountOK
+    if hasDiagPair
         bool candFound = false
         float candSlope = na
         int candX1 = na
@@ -1223,9 +1222,7 @@ if inTrade
         int candX2 = na
         float candY2 = na
 
-        bool hasDiagPair = tradeDir == 1 ? array.size(postLows_Price) >= 2 : array.size(postHighs_Price) >= 2
-
-        if tradeDir == 1 and hasDiagPair
+        if tradeDir == 1
             [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postLows_Price, postLows_Idx, false, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
             if sf
                 candFound := true
@@ -1234,7 +1231,7 @@ if inTrade
                 candY1 := sy1
                 candX2 := sx2
                 candY2 := sy2
-        else if tradeDir == -1 and hasDiagPair
+        else if tradeDir == -1
             [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postHighs_Price, postHighs_Idx, true, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
             if sf
                 candFound := true
