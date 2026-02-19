@@ -152,7 +152,7 @@ f_delLabel(label _lb) =>
         label.delete(_lb)
     label(na)
 
-f_updLabel(label _lb, int x, float y, string txt, color bg, color tc, label.style st) =>
+f_updLabel(label _lb, int x, float y, string txt, color bg, color tc, st) =>
     label lb = _lb
     if barstate.islast
         lb := f_delLabel(lb)
@@ -741,6 +741,11 @@ var int   pendingDir = 0
 var int   pendingBar = na
 var int   confirmCnt = 0
 var int   reclaimCnt = 0
+var float pendingSlope = na
+var int   pendingX1 = na
+var float pendingY1 = na
+var int   pendingX2 = na
+var float pendingY2 = na
 
 var float resHoldSlope = na
 var int   resHoldX1 = na
@@ -767,9 +772,20 @@ var float trailStop = na
 // ─────────────────────────────────────────────────────────────────────────────
 // 5) ACTION LINE ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
-bool hasRes = false, hasSup = false
-float resSlope = na, resY1 = na, resY2 = na, supSlope = na, supY1 = na, supY2 = na
-int resX1 = na, resX2 = na, supX1 = na, supX2 = na
+bool hasRes = false
+bool hasSup = false
+
+float resSlope = na
+float resY1 = na
+float resY2 = na
+float supSlope = na
+float supY1 = na
+float supY2 = na
+
+int resX1 = int(na)
+int resX2 = int(na)
+int supX1 = int(na)
+int supX2 = int(na)
 
 if bar_index > 0
     [_hasRes, _resSlope, _resX1, _resY1, _resX2, _resY2] = f_findBestTL(pivotHighs_Price, pivotHighs_Idx, true, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true)
@@ -966,7 +982,7 @@ else
 // Locked action line
 if showLockedActionLine and not inTrade
     if breakPending and not na(pendingSlope)
-        activeActLine := f_setRay(activeActLine, pendingX1, pendingY1, pendingX2, pendingY2, color.orange, 2)  // pending defined later
+        activeActLine := f_setRay(activeActLine, pendingX1, pendingY1, pendingX2, pendingY2, color.orange, 2)
     else if resHold and not na(resHoldSlope)
         activeActLine := f_setRay(activeActLine, resHoldX1, resHoldY1, resHoldX2, resHoldY2, color.yellow, 2)
     else if supHold and not na(supHoldSlope)
@@ -998,13 +1014,8 @@ if useHTFGate and showHTF
         rawShort := rawShort and htfNear
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pending Fakeout / Confirm Filter + State Vars
+// Pending Fakeout / Confirm Filter
 // ─────────────────────────────────────────────────────────────────────────────
-var float pendingSlope = na
-var int   pendingX1 = na
-var float pendingY1 = na
-var int   pendingX2 = na
-var float pendingY2 = na
 
 bool enterLong = false
 bool enterShort = false
@@ -1170,6 +1181,7 @@ if enterLong or enterShort
 
     color colBreak = enterLong ? color.red : color.green
     lockedActLine := f_setRay(lockedActLine, aX1, aY1, aX2, aY2, colBreak, 3)
+    activeActLine := f_delLine(activeActLine)
 
     if deleteDynOnEntry
         dynResLine := f_delLine(dynResLine)
@@ -1318,6 +1330,7 @@ if exitLong or exitShort
 
     if not keepLastBreakLine
         lockedActLine := f_delLine(lockedActLine)
+    activeActLine := f_delLine(activeActLine)
 
     safetyLineObj := f_delLine(safetyLineObj)
     actSlope := na
