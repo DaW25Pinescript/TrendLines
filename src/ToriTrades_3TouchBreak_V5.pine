@@ -129,7 +129,7 @@ f_setRay(line _ln, int x1, float y1, int x2, float y2, color col, int w) =>
     ln
 
 // Segment helper for projections (extend.none + style)
-f_setSeg(line _ln, int x1, float y1, int x2, float y2, color col, int w, style ls) =>
+f_setSeg(line _ln, int x1, float y1, int x2, float y2, color col, int w, line.style ls) =>
     line ln = _ln
     if na(ln)
         ln := line.new(x1, y1, x2, y2, xloc=xloc.bar_index, extend=extend.none, color=col, width=w, style=ls)
@@ -729,6 +729,7 @@ var float entryPx = na
 var line dynResLine = na
 var line dynSupLine = na
 var line lockedActLine = na
+var line activeActLine = na
 
 var float actSlope = na
 var int   actX0 = na
@@ -853,7 +854,7 @@ var line   shapeSupRay   = na
 var line   shapeResProj  = na
 var line   shapeSupProj  = na
 var polyline shapeFill   = na
-var array<chart.point> shapePts = array.new<chart.point>()
+var array<chart.point> shapePts = array.new<chart.point>(0)
 
 // Reset per bar
 shape_present := false
@@ -1115,6 +1116,8 @@ if useFakeoutFilter
             pendingY2 := na
             confirmCnt := 0
             reclaimCnt := 0
+            resHold := false
+            supHold := false
             if showLabels
                 label.new(bar_index, dir0 == 1 ? high : low, "FAKEOUT", style=dir0 == 1 ? label.style_label_down : label.style_label_up, textcolor=color.white, color=color.new(color.orange, 0))
         else if doConfirm or (evalClose and expired and isConfirm)
