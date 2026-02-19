@@ -741,6 +741,11 @@ var int   pendingDir = 0
 var int   pendingBar = na
 var int   confirmCnt = 0
 var int   reclaimCnt = 0
+var float pendingSlope = na
+var int   pendingX1 = na
+var float pendingY1 = na
+var int   pendingX2 = na
+var float pendingY2 = na
 
 var float resHoldSlope = na
 var int   resHoldX1 = na
@@ -966,7 +971,7 @@ else
 // Locked action line
 if showLockedActionLine and not inTrade
     if breakPending and not na(pendingSlope)
-        activeActLine := f_setRay(activeActLine, pendingX1, pendingY1, pendingX2, pendingY2, color.orange, 2)  // pending defined later
+        activeActLine := f_setRay(activeActLine, pendingX1, pendingY1, pendingX2, pendingY2, color.orange, 2)
     else if resHold and not na(resHoldSlope)
         activeActLine := f_setRay(activeActLine, resHoldX1, resHoldY1, resHoldX2, resHoldY2, color.yellow, 2)
     else if supHold and not na(supHoldSlope)
@@ -998,13 +1003,8 @@ if useHTFGate and showHTF
         rawShort := rawShort and htfNear
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pending Fakeout / Confirm Filter + State Vars
+// Pending Fakeout / Confirm Filter
 // ─────────────────────────────────────────────────────────────────────────────
-var float pendingSlope = na
-var int   pendingX1 = na
-var float pendingY1 = na
-var int   pendingX2 = na
-var float pendingY2 = na
 
 bool enterLong = false
 bool enterShort = false
