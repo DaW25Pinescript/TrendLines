@@ -1,5 +1,5 @@
 //@version=6
-indicator("ToriTrades_3TouchBreak_V5", overlay=true, max_lines_count=200, max_labels_count=250, scale=scale.none, max_polylines_count=10)
+indicator("ToriTrades_3TouchBreak_V7_Presets", overlay=true, max_lines_count=200, max_labels_count=250, scale=scale.none, max_polylines_count=10)
 
 // NOTE (TradingView “floating” lines/plots):
 // If anything looks vertically “detached”, right‑click the indicator → Settings → Scales → pin to the Right price scale.
@@ -7,59 +7,65 @@ indicator("ToriTrades_3TouchBreak_V5", overlay=true, max_lines_count=200, max_la
 // ─────────────────────────────────────────────────────────────────────────────
 // 1) INPUTS - Consolidated from MASTER V6.4.3 (Pro Visuals + Bootstrap)
 // ─────────────────────────────────────────────────────────────────────────────
+grp_preset = "🚀 Quick Presets"
+presetMode = input.string("Custom", "Load Trading Preset", options=["Custom", "Scalp", "Intraday", "Swing"], group=grp_preset)
+presetOverrides = input.bool(true, "Preset overrides advanced inputs", group=grp_preset, tooltip="If enabled and preset is not Custom, the Advanced input values below are ignored and the selected preset values are used instead.")
+
 grp_main = "Trendline Settings (Entry)"
-leftBars          = input.int(5, "Pivot Left Bars", minval=1, group=grp_main)
-rightBars         = input.int(5, "Pivot Right Bars", minval=1, group=grp_main)
-maxPivots         = input.int(20, "Max Global Pivots to Scan", minval=5, group=grp_main)
-minTouches        = input.int(3, "Min Touches (Action Line)", minval=2, group=grp_main)
-minSpacingAction  = input.int(1, "Min Bars Between Action Pivots", minval=1, group=grp_main)
+leftBars_in          = input.int(5, "Pivot Left Bars", minval=1, group=grp_main)
+rightBars_in         = input.int(5, "Pivot Right Bars", minval=1, group=grp_main)
+maxPivots_in         = input.int(20, "Max Global Pivots to Scan", minval=5, group=grp_main)
+minTouches_in        = input.int(3, "Min Touches (Action Line)", minval=2, group=grp_main)
+minSpacingAction_in  = input.int(1, "Min Bars Between Action Pivots", minval=1, group=grp_main)
 
 grp_fake = "Break Confirmation / Fakeout Filter"
 useFakeoutFilter     = input.bool(true, "Allow False Break (Reclaim) Filter", group=grp_fake)
 showLockedActionLine = input.bool(true, "Show Active Locked Action Line", group=grp_fake)
-reclaimBars          = input.int(8, "Reclaim Window (bars)", minval=1, group=grp_fake)
-reclaimCloses        = input.int(2, "Reclaim Requires Consecutive Closes", minval=1, group=grp_fake)
-confirmCloses        = input.int(2, "Confirm Requires Consecutive Closes", minval=1, group=grp_fake)
+reclaimBars_in          = input.int(8, "Reclaim Window (bars)", minval=1, group=grp_fake)
+reclaimCloses_in        = input.int(2, "Reclaim Requires Consecutive Closes", minval=1, group=grp_fake)
+confirmCloses_in        = input.int(2, "Confirm Requires Consecutive Closes", minval=1, group=grp_fake)
 
 grp_safe = "Safety Line (Exit)"
-postMaxPivots      = input.int(10, "Max Post-Entry Pivots", minval=2, group=grp_safe)
-safetyMinTouches   = input.int(2, "Min Touches (Safety Diagonal)", minval=2, group=grp_safe)
-minSpacingSafety   = input.int(5, "Min Bars Between Safety Pivots", minval=1, group=grp_safe)
-ratchetSafety      = input.bool(true, "Ratchet Safety (Only Tighten)", group=grp_safe)
-ratchetHystATR     = input.float(0.10, "Ratchet Hysteresis (ATR)", step=0.05, group=grp_safe)
+postMaxPivots_in      = input.int(10, "Max Post-Entry Pivots", minval=2, group=grp_safe)
+safetyMinTouches_in   = input.int(2, "Min Touches (Safety Diagonal)", minval=2, group=grp_safe)
+minSpacingSafety_in   = input.int(5, "Min Bars Between Safety Pivots", minval=1, group=grp_safe)
+ratchetSafety_in      = input.bool(true, "Ratchet Safety (Only Tighten)", group=grp_safe)
+ratchetHystATR_in     = input.float(0.10, "Ratchet Hysteresis (ATR)", step=0.05, group=grp_safe)
 
 // Bootstrap Stop (immediate safety before diagonal exists)
-useBootstrapStop = input.bool(true, "Bootstrap Safety Stop (Immediate)", group=grp_safe)
-bootstrapMode    = input.string("EntryCandle", "Bootstrap Mode", options=["EntryCandle", "ATRFromEntry"], group=grp_safe)
-bootstrapATRMult = input.float(1.5, "Bootstrap ATR Mult", step=0.1, group=grp_safe)
+useBootstrapStop_in = input.bool(true, "Bootstrap Safety Stop (Immediate)", group=grp_safe)
+bootstrapMode_in    = input.string("EntryCandle", "Bootstrap Mode", options=["EntryCandle", "ATRFromEntry"], group=grp_safe)
+bootstrapATRMult_in = input.float(1.5, "Bootstrap ATR Mult", step=0.1, group=grp_safe)
 
 grp_filt = "Tolerances / Filters / Visuals"
-atrLen            = input.int(14, "ATR Length", minval=1, group=grp_filt)
-touchMult         = input.float(0.5, "Action Touch Tolerance (ATR)", step=0.1, group=grp_filt)
-safetyTouchMult   = input.float(0.5, "Safety Touch Tolerance (ATR)", step=0.1, group=grp_filt)
-slMult            = input.float(1.0, "Safety Buffer (ATR)", step=0.1, group=grp_filt)
-breakConfirmATR   = input.float(0.0, "Break Strength Req (ATR, 0=off)", step=0.05, group=grp_filt)
+atrLen_in            = input.int(14, "ATR Length", minval=1, group=grp_filt)
+touchMult_in         = input.float(0.5, "Action Touch Tolerance (ATR)", step=0.1, group=grp_filt)
+safetyTouchMult_in   = input.float(0.5, "Safety Touch Tolerance (ATR)", step=0.1, group=grp_filt)
+slMult_in            = input.float(1.0, "Safety Buffer (ATR)", step=0.1, group=grp_filt)
+breakConfirmATR_in   = input.float(0.0, "Break Strength Req (ATR, 0=off)", step=0.05, group=grp_filt)
 
-useDistAction     = input.bool(false, "Use Distance Filter (Action)", group=grp_filt)
-maxActionDistATR  = input.float(50.0, "Max Action Line Distance (ATR)", step=1.0, group=grp_filt)
-useDistSafety     = input.bool(true, "Use Distance Filter (Safety)", group=grp_filt)
-maxSafetyDistATR  = input.float(25.0, "Max Safety Line Distance (ATR)", step=1.0, group=grp_filt)
+useDistAction_in     = input.bool(false, "Use Distance Filter (Action)", group=grp_filt)
+maxActionDistATR_in  = input.float(50.0, "Max Action Line Distance (ATR)", step=1.0, group=grp_filt)
+useDistSafety_in     = input.bool(true, "Use Distance Filter (Safety)", group=grp_filt)
+maxSafetyDistATR_in  = input.float(25.0, "Max Safety Line Distance (ATR)", step=1.0, group=grp_filt)
 
-useBarBreachCheck = input.bool(true, "Validate 'No Poke-Through' on ALL bars", group=grp_filt)
-barBreachMaxBars  = input.int(500, "Max Bars to Validate (cap)", minval=50, maxval=2000, group=grp_filt)
-barBreachStep     = input.int(1, "Validation Step (1=every bar)", minval=1, maxval=10, group=grp_filt)
-breachUseWicks    = input.bool(true, "Breach uses Wicks (High/Low) vs Close", group=grp_filt)
+useBarBreachCheck_in = input.bool(true, "Validate 'No Poke-Through' on ALL bars", group=grp_filt)
+barBreachMaxBars_in  = input.int(500, "Max Bars to Validate (cap)", minval=50, maxval=2000, group=grp_filt)
+barBreachStep_in     = input.int(1, "Validation Step (1=every bar)", minval=1, maxval=10, group=grp_filt)
+breachUseWicks_in    = input.bool(true, "Breach uses Wicks (High/Low) vs Close", group=grp_filt)
 
 deleteDynOnEntry = input.bool(true, "Delete Dynamic Lines on Entry", group=grp_filt)
 showLabels       = input.bool(true, "Show Labels", group=grp_filt)
 showDynLines     = input.bool(true, "Show Pending Lines", group=grp_filt)
 showSafetyRay    = input.bool(true, "Show Safety Ray", group=grp_filt)
 debugSafety      = input.bool(false, "DEBUG: Plot Effective Safety", group=grp_filt)
+showDashboard    = input.bool(true, "Show Info Dashboard", group=grp_filt)
 
 // Trade Review
 grp_review        = "Trade Review"
 keepLastBreakLine = input.bool(true, "Keep Last Break Trendline After Exit", group=grp_review)
 freezeBreakAtExit = input.bool(true, "Freeze Last Break Line at Exit", group=grp_review)
+maxHistoricalBreaks = input.int(5, "Max Historical Break Lines", minval=0, maxval=50, group=grp_review)
 
 // HTF Confluence
 grp_htf = "HTF Confluence Overlay"
@@ -90,6 +96,7 @@ showShapeLabels   = input.bool(true, "Show Shape Label", group=grp_shape)
 showShapeBounds   = input.bool(true, "Show Shape Boundaries", group=grp_shape)
 showShapeFill     = input.bool(false, "Show Shape Fill (polyline)", group=grp_shape)
 fillTransparency  = input.int(85, "Fill Transparency (0-100)", minval=0, maxval=100, group=grp_shape)
+maxShapeBackBars  = input.int(600, "Max Shape Anchor Lookback (bars)", minval=50, group=grp_shape)
 showShapeProj     = input.bool(false, "Show Shape Projection (dotted)", group=grp_shape)
 projBars          = input.int(40, "Projection Bars", minval=5, maxval=300, group=grp_shape)
 
@@ -99,6 +106,87 @@ maxApexBars       = input.int(60, "Max Apex Distance (bars)", minval=10, group=g
 compressRatio     = input.float(0.70, "Compression Threshold (gapNow/gapThen)", step=0.05, minval=0.1, maxval=0.95, group=grp_shape)
 flatMult          = input.float(0.4, "Flat Slope Threshold (ATR / 100 bars)", step=0.1, minval=0.05, group=grp_shape)
 shapeTolMult      = input.float(0.25, "Breakout Strength (ATR)", step=0.05, minval=0.0, group=grp_shape)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 1.5) EFFECTIVE SETTINGS (Preset Engine)
+// ─────────────────────────────────────────────────────────────────────────────
+bool usePreset = presetOverrides and presetMode != "Custom"
+
+// Preset values (fallback to Advanced inputs in Custom)
+int   p_leftBars         = presetMode == "Scalp" ? 3  : presetMode == "Intraday" ? 5  : presetMode == "Swing" ? 7  : leftBars_in
+int   p_rightBars        = presetMode == "Scalp" ? 3  : presetMode == "Intraday" ? 5  : presetMode == "Swing" ? 7  : rightBars_in
+int   p_maxPivots        = presetMode == "Scalp" ? 15 : presetMode == "Intraday" ? 20 : presetMode == "Swing" ? 25 : maxPivots_in
+int   p_minTouches       = 3
+int   p_minSpacingAction = presetMode == "Swing" ? 2 : 1
+
+int   p_reclaimBars      = presetMode == "Scalp" ? 6  : presetMode == "Intraday" ? 8  : presetMode == "Swing" ? 12 : reclaimBars_in
+int   p_reclaimCloses    = 2
+int   p_confirmCloses    = presetMode == "Scalp" ? 1 : 2
+int   p_postMaxPivots    = presetMode == "Scalp" ? 8  : presetMode == "Intraday" ? 10 : presetMode == "Swing" ? 12 : postMaxPivots_in
+
+int   p_safetyMinTouches = 2
+int   p_minSpacingSafety = presetMode == "Scalp" ? 3 : presetMode == "Intraday" ? 5 : presetMode == "Swing" ? 7 : minSpacingSafety_in
+bool  p_ratchetSafety    = true
+float p_ratchetHystATR   = presetMode == "Swing" ? 0.15 : 0.10
+
+bool  p_useBootstrapStop = true
+string p_bootstrapMode   = presetMode == "Scalp" ? "EntryCandle" : "ATRFromEntry"
+float p_bootstrapATRMult = presetMode == "Scalp" ? 1.2 : presetMode == "Intraday" ? 1.5 : presetMode == "Swing" ? 2.0 : bootstrapATRMult_in
+
+int   p_atrLen           = presetMode == "Swing" ? 21 : 14
+float p_touchMult        = presetMode == "Scalp" ? 0.45 : presetMode == "Intraday" ? 0.50 : presetMode == "Swing" ? 0.60 : touchMult_in
+float p_safetyTouchMult  = presetMode == "Scalp" ? 0.45 : presetMode == "Intraday" ? 0.50 : presetMode == "Swing" ? 0.60 : safetyTouchMult_in
+float p_slMult           = presetMode == "Scalp" ? 0.8  : presetMode == "Intraday" ? 1.0  : presetMode == "Swing" ? 1.2  : slMult_in
+float p_breakConfirmATR  = presetMode == "Scalp" ? 0.15 : 0.0
+
+bool  p_useDistAction    = presetMode == "Swing"
+float p_maxActionDistATR = presetMode == "Scalp" ? 50.0 : presetMode == "Intraday" ? 50.0 : 40.0
+bool  p_useDistSafety    = true
+float p_maxSafetyDistATR = presetMode == "Scalp" ? 20.0 : presetMode == "Intraday" ? 25.0 : presetMode == "Swing" ? 30.0 : maxSafetyDistATR_in
+
+bool  p_useBarBreachCheck = true
+int   p_barBreachMaxBars  = presetMode == "Scalp" ? 300 : presetMode == "Intraday" ? 500 : presetMode == "Swing" ? 800 : barBreachMaxBars_in
+int   p_barBreachStep     = presetMode == "Swing" ? 2 : 1
+bool  p_breachUseWicks    = true
+
+// Effective values used by the script
+int   leftBars          = usePreset ? p_leftBars          : leftBars_in
+int   rightBars         = usePreset ? p_rightBars         : rightBars_in
+int   maxPivots         = usePreset ? p_maxPivots         : maxPivots_in
+int   minTouches        = usePreset ? p_minTouches        : minTouches_in
+int   minSpacingAction  = usePreset ? p_minSpacingAction  : minSpacingAction_in
+
+int   reclaimBars       = usePreset ? p_reclaimBars       : reclaimBars_in
+int   reclaimCloses     = usePreset ? p_reclaimCloses     : reclaimCloses_in
+int   confirmCloses     = usePreset ? p_confirmCloses     : confirmCloses_in
+
+int   postMaxPivots     = usePreset ? p_postMaxPivots     : postMaxPivots_in
+
+int   safetyMinTouches  = usePreset ? p_safetyMinTouches  : safetyMinTouches_in
+int   minSpacingSafety  = usePreset ? p_minSpacingSafety  : minSpacingSafety_in
+bool  ratchetSafety     = usePreset ? p_ratchetSafety     : ratchetSafety_in
+float ratchetHystATR    = usePreset ? p_ratchetHystATR    : ratchetHystATR_in
+
+bool  useBootstrapStop  = usePreset ? p_useBootstrapStop  : useBootstrapStop_in
+string bootstrapMode    = usePreset ? p_bootstrapMode     : bootstrapMode_in
+float bootstrapATRMult  = usePreset ? p_bootstrapATRMult  : bootstrapATRMult_in
+
+int   atrLen            = usePreset ? p_atrLen            : atrLen_in
+float touchMult         = usePreset ? p_touchMult         : touchMult_in
+float safetyTouchMult   = usePreset ? p_safetyTouchMult   : safetyTouchMult_in
+float slMult            = usePreset ? p_slMult            : slMult_in
+float breakConfirmATR   = usePreset ? p_breakConfirmATR   : breakConfirmATR_in
+
+bool  useDistAction     = usePreset ? p_useDistAction     : useDistAction_in
+float maxActionDistATR  = usePreset ? p_maxActionDistATR  : maxActionDistATR_in
+bool  useDistSafety     = usePreset ? p_useDistSafety     : useDistSafety_in
+float maxSafetyDistATR  = usePreset ? p_maxSafetyDistATR  : maxSafetyDistATR_in
+
+bool  useBarBreachCheck = usePreset ? p_useBarBreachCheck : useBarBreachCheck_in
+int   barBreachMaxBars  = usePreset ? p_barBreachMaxBars  : barBreachMaxBars_in
+int   barBreachStep     = usePreset ? p_barBreachStep     : barBreachStep_in
+bool  breachUseWicks    = usePreset ? p_breachUseWicks    : breachUseWicks_in
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2) CALCS & HELPERS (core)
@@ -178,8 +266,13 @@ f_barBreachScan(int x0, float y0, float slope, int xEnd, bool isRes, float tol, 
                 break
     breached
 
+f_touchWidth(int touches, int minT) =>
+    int extra = math.max(0, touches - minT)
+    int w = math.min(4, 2 + extra)
+    w
+
 // Best trendline finder (action & safety)
-f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int xNow, float pxNow, int min_t, int minSpacingBars, float maxDist, bool strictBreach) =>
+f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int xNow, float pxNow, int min_t, int minSpacingBars, float maxDist, bool strictBreach, bool useBarBreachCheckArg, int barBreachMaxBarsArg, int barBreachStepArg, bool breachUseWicksArg) =>
     bool  found = false
     float bestSlope = na
     int   bestX1 = na
@@ -189,6 +282,7 @@ f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int 
     int   bestTouches = -1
     float bestAbsSlope = 1e10
     float bestDist = 1e10
+    float slopeEps = math.max(syminfo.mintick * 0.1, 1e-10)
 
     int n = array.size(pPrices)
     if n >= 2
@@ -222,36 +316,45 @@ f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int 
                                     breached := true
 
                         if not breached and touches >= min_t
-                            bool barBreached = false
-                            if strictBreach and useBarBreachCheck
-                                barBreached := f_barBreachScan(xOld, yOld, slope, xNow, isRes, tol, barBreachMaxBars, barBreachStep, breachUseWicks)
+                            float lineNow = f_lineAt(yOld, slope, xOld, xNow)
+                            float distNow = math.abs(pxNow - lineNow)
+                            if distNow <= maxDist
+                                float absSlope = math.abs(slope)
+                                bool better = false
+                                if not found
+                                    better := true
+                                else if touches > bestTouches
+                                    better := true
+                                else if touches == bestTouches and absSlope < bestAbsSlope
+                                    better := true
+                                else if touches == bestTouches and math.abs(absSlope - bestAbsSlope) <= slopeEps and distNow < bestDist
+                                    better := true
 
-                            if not barBreached
-                                float lineNow = f_lineAt(yOld, slope, xOld, xNow)
-                                float distNow = math.abs(pxNow - lineNow)
-                                if distNow <= maxDist
-                                    float absSlope = math.abs(slope)
-                                    bool better = false
-                                    if not found
-                                        better := true
-                                    else if touches > bestTouches
-                                        better := true
-                                    else if touches == bestTouches and absSlope < bestAbsSlope
-                                        better := true
-                                    else if touches == bestTouches and absSlope == bestAbsSlope and distNow < bestDist
-                                        better := true
+                                if better
+                                    found := true
+                                    bestTouches := touches
+                                    bestSlope := slope
+                                    bestAbsSlope := absSlope
+                                    bestDist := distNow
+                                    bestX1 := xOld
+                                    bestY1 := yOld
+                                    bestX2 := xNew
+                                    bestY2 := yNew
 
-                                    if better
-                                        found := true
-                                        bestTouches := touches
-                                        bestSlope := slope
-                                        bestAbsSlope := absSlope
-                                        bestDist := distNow
-                                        bestX1 := xOld
-                                        bestY1 := yOld
-                                        bestX2 := xNew
-                                        bestY2 := yNew
-    [found, bestSlope, bestX1, bestY1, bestX2, bestY2]
+    if found and strictBreach and useBarBreachCheckArg
+        bool finalBreached = f_barBreachScan(bestX1, bestY1, bestSlope, xNow, isRes, tol, barBreachMaxBarsArg, barBreachStepArg, breachUseWicksArg)
+        if finalBreached
+            found := false
+            bestSlope := na
+            bestX1 := na
+            bestY1 := na
+            bestX2 := na
+            bestY2 := na
+            bestTouches := -1
+            bestAbsSlope := 1e10
+            bestDist := 1e10
+
+    [found, bestSlope, bestX1, bestY1, bestX2, bestY2, bestTouches]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HTF CONFLUENCE (full from V6.3.5/V6.4.0 - adapted to v6)
@@ -295,6 +398,7 @@ f_findBestTL_T(array<float> pPrices, array<int> pTimes, bool isRes, float tol, i
     int   bestTouches = -1
     float bestAbsSlope = 1e10
     float bestDist = 1e10
+    float slopeEps = math.max(syminfo.mintick * 0.1, 1e-10)
 
     int n = array.size(pPrices)
     if n >= 2
@@ -338,7 +442,7 @@ f_findBestTL_T(array<float> pPrices, array<int> pTimes, bool isRes, float tol, i
                                     better := true
                                 else if touches == bestTouches and absSlope < bestAbsSlope
                                     better := true
-                                else if touches == bestTouches and absSlope == bestAbsSlope and distNow < bestDist
+                                else if touches == bestTouches and math.abs(absSlope - bestAbsSlope) <= slopeEps and distNow < bestDist
                                     better := true
 
                                 if better
@@ -528,11 +632,13 @@ f_pickGroup(bool dF, bool h4F, bool h1F, float dS, float dY, int dT, float h4S, 
             rep := 24
             score := 2
             lab := "D+4H"
+            hideD := true
             hide4 := true
         else if aD1_2
             rep := 24
             score := 2
             lab := "D+1H"
+            hideD := true
             hide1 := true
         else if a41_2
             rep := 4
@@ -729,6 +835,10 @@ var line dynResLine = na
 var line dynSupLine = na
 var line lockedActLine = na
 var line activeActLine = na
+var table infoDash = na
+var array<line> historicalBreakLines = array.new_line()
+
+var int actTouches = 0
 
 var float actSlope = na
 var int   actX0 = na
@@ -778,9 +888,11 @@ bool hasSup = false
 float resSlope = na
 float resY1 = na
 float resY2 = na
+int resTouches = 0
 float supSlope = na
 float supY1 = na
 float supY2 = na
+int supTouches = 0
 
 int resX1 = int(na)
 int resX2 = int(na)
@@ -788,23 +900,23 @@ int supX1 = int(na)
 int supX2 = int(na)
 
 if bar_index > 0
-    [_hasRes, _resSlope, _resX1, _resY1, _resX2, _resY2] = f_findBestTL(pivotHighs_Price, pivotHighs_Idx, true, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true)
+    [_hasRes, _resSlope, _resX1, _resY1, _resX2, _resY2, _resTouches] = f_findBestTL(pivotHighs_Price, pivotHighs_Idx, true, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
     hasRes := _hasRes
     resSlope := _resSlope
     resX1 := _resX1
     resY1 := _resY1
     resX2 := _resX2
     resY2 := _resY2
+    resTouches := _resTouches
 
-    [_hasSup, _supSlope, _supX1, _supY1, _supX2, _supY2] = f_findBestTL(pivotLows_Price, pivotLows_Idx, false, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true)
+    [_hasSup, _supSlope, _supX1, _supY1, _supX2, _supY2, _supTouches] = f_findBestTL(pivotLows_Price, pivotLows_Idx, false, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
     hasSup := _hasSup
     supSlope := _supSlope
     supX1 := _supX1
     supY1 := _supY1
     supX2 := _supX2
     supY2 := _supY2
-
-float atrNow = ta.atr(atrLen)
+    supTouches := _supTouches
 
 // Hold logic for fakeout protection
 if not resHold
@@ -912,6 +1024,7 @@ if canShape
 // Shape visuals (last bar only)
 if barstate.islast
     bool showNow = enableShapes and shape_present and shape_conf >= minShapeConf
+    bool shapePtsOK = not na(resHoldX1) and not na(supHoldX1) and (bar_index - resHoldX1) <= maxShapeBackBars and (bar_index - supHoldX1) <= maxShapeBackBars
     if showNow
         if showShapeLabels
             string lbTxt = shape_type + " (" + str.tostring(shape_conf * 100, "#") + "%)"
@@ -920,7 +1033,7 @@ if barstate.islast
         else
             shapeLb := f_delLabel(shapeLb)
 
-        if showShapeBounds
+        if showShapeBounds and shapePtsOK
             shapeResRay := f_setSeg(shapeResRay, resHoldX1, resHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2, line.style_solid)
             shapeSupRay := f_setSeg(shapeSupRay, supHoldX1, supHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2, line.style_solid)
         else
@@ -928,7 +1041,7 @@ if barstate.islast
             shapeSupRay := f_delLine(shapeSupRay)
 
         // Polyline fill
-        if showShapeFill and not na(shape_apexBar) and not na(shape_apexPx)
+        if showShapeFill and shapePtsOK and not na(shape_apexBar) and not na(shape_apexPx)
             if not na(shapeFill)
                 polyline.delete(shapeFill)
             array.clear(shapePts)
@@ -968,11 +1081,11 @@ bool shapeBreakDn = enableShapes and shape_present and not na(supNow) and close 
 // Dynamic pending lines
 if showDynLines
     if not na(resHoldSlope)
-        dynResLine := f_setRay(dynResLine, resHoldX1, resHoldY1, resHoldX2, resHoldY2, color.red, 2)
+        dynResLine := f_setRay(dynResLine, resHoldX1, resHoldY1, resHoldX2, resHoldY2, color.red, f_touchWidth(resTouches, minTouches))
     else
         dynResLine := f_delLine(dynResLine)
     if not na(supHoldSlope)
-        dynSupLine := f_setRay(dynSupLine, supHoldX1, supHoldY1, supHoldX2, supHoldY2, color.green, 2)
+        dynSupLine := f_setRay(dynSupLine, supHoldX1, supHoldY1, supHoldX2, supHoldY2, color.green, f_touchWidth(supTouches, minTouches))
     else
         dynSupLine := f_delLine(dynSupLine)
 else
@@ -982,19 +1095,19 @@ else
 // Locked action line
 if showLockedActionLine and not inTrade
     if breakPending and not na(pendingSlope)
-        activeActLine := f_setRay(activeActLine, pendingX1, pendingY1, pendingX2, pendingY2, color.orange, 2)
+        activeActLine := f_setRay(activeActLine, pendingX1, pendingY1, pendingX2, pendingY2, color.orange, f_touchWidth(minTouches, minTouches))
     else if resHold and not na(resHoldSlope)
-        activeActLine := f_setRay(activeActLine, resHoldX1, resHoldY1, resHoldX2, resHoldY2, color.yellow, 2)
+        activeActLine := f_setRay(activeActLine, resHoldX1, resHoldY1, resHoldX2, resHoldY2, color.yellow, f_touchWidth(resTouches, minTouches))
     else if supHold and not na(supHoldSlope)
-        activeActLine := f_setRay(activeActLine, supHoldX1, supHoldY1, supHoldX2, supHoldY2, color.yellow, 2)
+        activeActLine := f_setRay(activeActLine, supHoldX1, supHoldY1, supHoldX2, supHoldY2, color.yellow, f_touchWidth(supTouches, minTouches))
     else
         activeActLine := f_delLine(activeActLine)
 else
     activeActLine := f_delLine(activeActLine)
 
 bool evalClose = barstate.isconfirmed
-bool rawLong = (not inTrade) and (not breakPending) and evalClose and not na(resNow) and close > resNow and (breakConfirmATR <= 0.0 or (close - resNow) >= atrNow * breakConfirmATR)
-bool rawShort = (not inTrade) and (not breakPending) and evalClose and not na(supNow) and close < supNow and (breakConfirmATR <= 0.0 or (supNow - close) >= atrNow * breakConfirmATR)
+bool rawLong = (not inTrade) and (not breakPending) and evalClose and not na(resNow) and close > resNow and (breakConfirmATR <= 0.0 or (close - resNow) >= atr * breakConfirmATR)
+bool rawShort = (not inTrade) and (not breakPending) and evalClose and not na(supNow) and close < supNow and (breakConfirmATR <= 0.0 or (supNow - close) >= atr * breakConfirmATR)
 
 // Shape filter
 bool shapeOK = enableShapes and shape_present and shape_conf >= minShapeConf
@@ -1006,12 +1119,13 @@ else if shapeFilterMode == "Require Breakout"
     rawShort := rawShort and shapeBreakDn and shapeOK
 
 if useHTFGate and showHTF
+    bool htfReady = not na(htfResNow) or not na(htfSupNow)
     if gateMode == "Bias"
-        rawLong := rawLong and (htfBias != -1)
-        rawShort := rawShort and (htfBias != 1)
+        rawLong := rawLong and htfReady and (htfBias != -1)
+        rawShort := rawShort and htfReady and (htfBias != 1)
     else
-        rawLong := rawLong and htfNear
-        rawShort := rawShort and htfNear
+        rawLong := rawLong and htfReady and htfNear
+        rawShort := rawShort and htfReady and htfNear
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pending Fakeout / Confirm Filter
@@ -1048,6 +1162,7 @@ if useFakeoutFilter
             confirmCnt := 1
             reclaimCnt := 0
             resHold := true
+            supHold := false
             if showLabels
                 label.new(bar_index, high, "BREAK?", style=label.style_label_down, textcolor=color.white, color=color.orange)
             if confirmCloses <= 1
@@ -1063,6 +1178,7 @@ if useFakeoutFilter
                 confirmCnt := 0
                 reclaimCnt := 0
                 resHold := false
+                supHold := false
         else if rawShort and not na(supHoldSlope)
             breakPending := true
             pendingDir := -1
@@ -1075,6 +1191,7 @@ if useFakeoutFilter
             confirmCnt := 1
             reclaimCnt := 0
             supHold := true
+            resHold := false
             if showLabels
                 label.new(bar_index, low, "BREAK?", style=label.style_label_up, textcolor=color.white, color=color.orange)
             if confirmCloses <= 1
@@ -1090,6 +1207,7 @@ if useFakeoutFilter
                 confirmCnt := 0
                 reclaimCnt := 0
                 supHold := false
+                resHold := false
     else
         int barsSince = bar_index - pendingBar
         float pendNow = f_lineAt(pendingY1, pendingSlope, pendingX1, bar_index)
@@ -1160,6 +1278,16 @@ if enterLong or enterShort
     entryBar := bar_index
     entryPx := close
 
+    array.clear(postLows_Price)
+    array.clear(postLows_Idx)
+    array.clear(postHighs_Price)
+    array.clear(postHighs_Idx)
+    sSlope := na
+    sX1 := na
+    sY1 := na
+    sX2 := na
+    sY2 := na
+
     if useBootstrapStop
         float entryATR = atr
         float bootStop = enterLong ? (low - entryATR * bootstrapATRMult) : (high + entryATR * bootstrapATRMult)
@@ -1180,9 +1308,10 @@ if enterLong or enterShort
     actY0 := aY1
     actX1 := aX2
     actY1 := aY2
+    actTouches := enterLong ? resTouches : supTouches
 
     color colBreak = enterLong ? color.red : color.green
-    lockedActLine := f_setRay(lockedActLine, aX1, aY1, aX2, aY2, colBreak, 3)
+    lockedActLine := f_setRay(lockedActLine, aX1, aY1, aX2, aY2, colBreak, f_touchWidth(actTouches, minTouches))
     activeActLine := f_delLine(activeActLine)
 
     if deleteDynOnEntry
@@ -1223,7 +1352,7 @@ if inTrade
         float candY2 = na
 
         if tradeDir == 1
-            [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postLows_Price, postLows_Idx, false, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
+            [sf, ss, sx1, sy1, sx2, sy2, _sTouchesL] = f_findBestTL(postLows_Price, postLows_Idx, false, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
             if sf
                 candFound := true
                 candSlope := ss
@@ -1231,8 +1360,8 @@ if inTrade
                 candY1 := sy1
                 candX2 := sx2
                 candY2 := sy2
-        else
-            [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postHighs_Price, postHighs_Idx, true, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
+        else if tradeDir == -1
+            [sf, ss, sx1, sy1, sx2, sy2, _sTouchesH] = f_findBestTL(postHighs_Price, postHighs_Idx, true, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
             if sf
                 candFound := true
                 candSlope := ss
@@ -1331,19 +1460,55 @@ if exitLong or exitShort
         float yExitAct = f_lineAt(actY0, actSlope, actX0, bar_index)
         line.set_xy2(lockedActLine, bar_index, yExitAct)
         line.set_extend(lockedActLine, extend.none)
+        array.unshift(historicalBreakLines, lockedActLine)
+        while array.size(historicalBreakLines) > maxHistoricalBreaks
+            line oldLn = array.pop(historicalBreakLines)
+            if not na(oldLn)
+                line.delete(oldLn)
+        lockedActLine := na
 
     if not keepLastBreakLine
         lockedActLine := f_delLine(lockedActLine)
+        while array.size(historicalBreakLines) > 0
+            line oldLn = array.pop(historicalBreakLines)
+            if not na(oldLn)
+                line.delete(oldLn)
     activeActLine := f_delLine(activeActLine)
 
     safetyLineObj := f_delLine(safetyLineObj)
     actSlope := na
     actX0 := na
     actY0 := na
+    actTouches := 0
     array.clear(postLows_Price)
     array.clear(postLows_Idx)
     array.clear(postHighs_Price)
     array.clear(postHighs_Idx)
+
+if barstate.islast
+    if showDashboard
+        if na(infoDash)
+            infoDash := table.new(position.top_right, 2, 6, bgcolor=color.new(color.black, 80), frame_color=color.new(color.gray, 40), frame_width=1)
+        string stateTxt = inTrade ? (tradeDir == 1 ? "In Trade (Long)" : "In Trade (Short)") : (breakPending ? "Pending Confirm" : "Idle")
+        string safetyTxt = na(sSlope) ? (na(trailStop) ? "None" : "Bootstrap") : "Diagonal"
+        string shapeTxt = shape_present ? shape_type + " " + str.tostring(shape_conf * 100, "#") + "%" : "None"
+        string htfTxt = str.tostring(resScore + supScore) + " (R:" + str.tostring(resScore) + "/S:" + str.tostring(supScore) + ")"
+
+        table.cell(infoDash, 0, 0, "State", text_color=color.white)
+        table.cell(infoDash, 1, 0, stateTxt, text_color=inTrade ? color.lime : (breakPending ? color.orange : color.silver))
+        table.cell(infoDash, 0, 1, "HTF Score", text_color=color.white)
+        table.cell(infoDash, 1, 1, htfTxt, text_color=(resScore + supScore) >= minHTFScore ? color.lime : color.orange)
+        table.cell(infoDash, 0, 2, "Shape", text_color=color.white)
+        table.cell(infoDash, 1, 2, shapeTxt, text_color=shape_present ? color.fuchsia : color.silver)
+        table.cell(infoDash, 0, 3, "Pending?", text_color=color.white)
+        table.cell(infoDash, 1, 3, breakPending ? "Yes" : "No", text_color=breakPending ? color.orange : color.silver)
+        table.cell(infoDash, 0, 4, "Safety", text_color=color.white)
+        table.cell(infoDash, 1, 4, safetyTxt, text_color=color.yellow)
+        table.cell(infoDash, 0, 5, "Break Lines", text_color=color.white)
+        table.cell(infoDash, 1, 5, str.tostring(array.size(historicalBreakLines)), text_color=color.aqua)
+    else if not na(infoDash)
+        table.delete(infoDash)
+        infoDash := na
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEBUG + ALERTS
