@@ -1215,7 +1215,7 @@ if inTrade
 
     bool pivCountOK = tradeDir == 1 ? array.size(postLows_Price) >= (require2PostPivots ? 2 : 1) : array.size(postHighs_Price) >= (require2PostPivots ? 2 : 1)
 
-    if pivCountOK and (tradeDir == 1 ? array.size(postLows_Price) >= 2 : array.size(postHighs_Price) >= 2)
+    if pivCountOK
         bool candFound = false
         float candSlope = na
         int candX1 = na
@@ -1223,7 +1223,9 @@ if inTrade
         int candX2 = na
         float candY2 = na
 
-        if tradeDir == 1
+        bool hasDiagPair = tradeDir == 1 ? array.size(postLows_Price) >= 2 : array.size(postHighs_Price) >= 2
+
+        if tradeDir == 1 and hasDiagPair
             [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postLows_Price, postLows_Idx, false, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
             if sf
                 candFound := true
@@ -1232,7 +1234,7 @@ if inTrade
                 candY1 := sy1
                 candX2 := sx2
                 candY2 := sy2
-        else
+        else if tradeDir == -1 and hasDiagPair
             [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postHighs_Price, postHighs_Idx, true, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
             if sf
                 candFound := true
