@@ -152,7 +152,7 @@ f_delLabel(label _lb) =>
         label.delete(_lb)
     label(na)
 
-f_updLabel(label _lb, int x, float y, string txt, color bg, color tc, label.style st) =>
+f_updLabel(label _lb, int x, float y, string txt, color bg, color tc, st) =>
     label lb = _lb
     if barstate.islast
         lb := f_delLabel(lb)
@@ -772,9 +772,20 @@ var float trailStop = na
 // ─────────────────────────────────────────────────────────────────────────────
 // 5) ACTION LINE ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
-bool hasRes = false, hasSup = false
-float resSlope = na, resY1 = na, resY2 = na, supSlope = na, supY1 = na, supY2 = na
-int resX1 = na, resX2 = na, supX1 = na, supX2 = na
+bool hasRes = false
+bool hasSup = false
+
+float resSlope = na
+float resY1 = na
+float resY2 = na
+float supSlope = na
+float supY1 = na
+float supY2 = na
+
+int resX1 = int(na)
+int resX2 = int(na)
+int supX1 = int(na)
+int supX2 = int(na)
 
 if bar_index > 0
     [_hasRes, _resSlope, _resX1, _resY1, _resX2, _resY2] = f_findBestTL(pivotHighs_Price, pivotHighs_Idx, true, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true)
@@ -1170,6 +1181,7 @@ if enterLong or enterShort
 
     color colBreak = enterLong ? color.red : color.green
     lockedActLine := f_setRay(lockedActLine, aX1, aY1, aX2, aY2, colBreak, 3)
+    activeActLine := f_delLine(activeActLine)
 
     if deleteDynOnEntry
         dynResLine := f_delLine(dynResLine)
@@ -1318,6 +1330,7 @@ if exitLong or exitShort
 
     if not keepLastBreakLine
         lockedActLine := f_delLine(lockedActLine)
+    activeActLine := f_delLine(activeActLine)
 
     safetyLineObj := f_delLine(safetyLineObj)
     actSlope := na
