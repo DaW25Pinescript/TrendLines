@@ -90,6 +90,7 @@ showShapeLabels   = input.bool(true, "Show Shape Label", group=grp_shape)
 showShapeBounds   = input.bool(true, "Show Shape Boundaries", group=grp_shape)
 showShapeFill     = input.bool(false, "Show Shape Fill (polyline)", group=grp_shape)
 fillTransparency  = input.int(85, "Fill Transparency (0-100)", minval=0, maxval=100, group=grp_shape)
+maxShapeBackBars  = input.int(600, "Max Shape Anchor Lookback (bars)", minval=50, group=grp_shape)
 showShapeProj     = input.bool(false, "Show Shape Projection (dotted)", group=grp_shape)
 projBars          = input.int(40, "Projection Bars", minval=5, maxval=300, group=grp_shape)
 
@@ -806,8 +807,6 @@ if bar_index > 0
     supX2 := _supX2
     supY2 := _supY2
 
-float atrNow = ta.atr(atrLen)
-
 // Hold logic for fakeout protection
 if not resHold
     if hasRes
@@ -914,6 +913,7 @@ if canShape
 // Shape visuals (last bar only)
 if barstate.islast
     bool showNow = enableShapes and shape_present and shape_conf >= minShapeConf
+    bool shapePtsOK = not na(resHoldX1) and not na(supHoldX1) and (bar_index - resHoldX1) <= maxShapeBackBars and (bar_index - supHoldX1) <= maxShapeBackBars
     if showNow
         if showShapeLabels
             string lbTxt = shape_type + " (" + str.tostring(shape_conf * 100, "#") + "%)"
@@ -922,7 +922,7 @@ if barstate.islast
         else
             shapeLb := f_delLabel(shapeLb)
 
-        if showShapeBounds
+        if showShapeBounds and shapePtsOK
             shapeResRay := f_setSeg(shapeResRay, resHoldX1, resHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2, line.style_solid)
             shapeSupRay := f_setSeg(shapeSupRay, supHoldX1, supHoldY1, shape_apexBar, shape_apexPx, color.new(color.fuchsia, 40), 2, line.style_solid)
         else
@@ -930,7 +930,7 @@ if barstate.islast
             shapeSupRay := f_delLine(shapeSupRay)
 
         // Polyline fill
-        if showShapeFill and not na(shape_apexBar) and not na(shape_apexPx)
+        if showShapeFill and shapePtsOK and not na(shape_apexBar) and not na(shape_apexPx)
             if not na(shapeFill)
                 polyline.delete(shapeFill)
             array.clear(shapePts)
@@ -995,8 +995,8 @@ else
     activeActLine := f_delLine(activeActLine)
 
 bool evalClose = barstate.isconfirmed
-bool rawLong = (not inTrade) and (not breakPending) and evalClose and not na(resNow) and close > resNow and (breakConfirmATR <= 0.0 or (close - resNow) >= atrNow * breakConfirmATR)
-bool rawShort = (not inTrade) and (not breakPending) and evalClose and not na(supNow) and close < supNow and (breakConfirmATR <= 0.0 or (supNow - close) >= atrNow * breakConfirmATR)
+bool rawLong = (not inTrade) and (not breakPending) and evalClose and not na(resNow) and close > resNow and (breakConfirmATR <= 0.0 or (close - resNow) >= atr * breakConfirmATR)
+bool rawShort = (not inTrade) and (not breakPending) and evalClose and not na(supNow) and close < supNow and (breakConfirmATR <= 0.0 or (supNow - close) >= atr * breakConfirmATR)
 
 // Shape filter
 bool shapeOK = enableShapes and shape_present and shape_conf >= minShapeConf
@@ -1008,12 +1008,13 @@ else if shapeFilterMode == "Require Breakout"
     rawShort := rawShort and shapeBreakDn and shapeOK
 
 if useHTFGate and showHTF
+    bool htfReady = not na(htfResNow) or not na(htfSupNow)
     if gateMode == "Bias"
-        rawLong := rawLong and (htfBias != -1)
-        rawShort := rawShort and (htfBias != 1)
+        rawLong := rawLong and htfReady and (htfBias != -1)
+        rawShort := rawShort and htfReady and (htfBias != 1)
     else
-        rawLong := rawLong and htfNear
-        rawShort := rawShort and htfNear
+        rawLong := rawLong and htfReady and htfNear
+        rawShort := rawShort and htfReady and htfNear
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pending Fakeout / Confirm Filter
