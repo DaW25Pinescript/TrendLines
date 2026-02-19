@@ -1249,6 +1249,8 @@ if inTrade
             if not na(sSlope) and not na(sX1)
                 float currLineNow = f_lineAt(sY1, sSlope, sX1, bar_index)
                 currEffNow := tradeDir == 1 ? currLineNow - slBuf : currLineNow + slBuf
+            else if not na(trailStop)
+                currEffNow := trailStop
 
             bool accept = true
             if ratchetSafety and not na(currEffNow)
