@@ -41,7 +41,6 @@ This file is a quick index of the main inputs grouped as they appear in TradingV
 | `postMaxPivots` | `int` | Max Post-Entry Pivots |
 | `safetyMinTouches` | `int` | Min Touches (Safety Diagonal) |
 | `minSpacingSafety` | `int` | Min Bars Between Safety Pivots |
-| `require2PostPivots` | `bool` | Require 2 Post-Entry Pivots for Diagonal |
 | `ratchetSafety` | `bool` | Ratchet Safety (Only Tighten) |
 | `ratchetHystATR` | `float` | Ratchet Hysteresis (ATR) |
 | `useBootstrapStop` | `bool` | Bootstrap Safety Stop (Immediate) |
