@@ -179,7 +179,7 @@ f_barBreachScan(int x0, float y0, float slope, int xEnd, bool isRes, float tol, 
     breached
 
 // Best trendline finder (action & safety)
-f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int xNow, float pxNow, int min_t, int minSpacingBars, float maxDist, bool strictBreach) =>
+f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int xNow, float pxNow, int min_t, int minSpacingBars, float maxDist, bool strictBreach, bool useBarBreachCheckArg, int barBreachMaxBarsArg, int barBreachStepArg, bool breachUseWicksArg) =>
     bool  found = false
     float bestSlope = na
     int   bestX1 = na
@@ -189,6 +189,7 @@ f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int 
     int   bestTouches = -1
     float bestAbsSlope = 1e10
     float bestDist = 1e10
+    float slopeEps = math.max(syminfo.mintick * 0.1, 1e-10)
 
     int n = array.size(pPrices)
     if n >= 2
@@ -223,8 +224,8 @@ f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int 
 
                         if not breached and touches >= min_t
                             bool barBreached = false
-                            if strictBreach and useBarBreachCheck
-                                barBreached := f_barBreachScan(xOld, yOld, slope, xNow, isRes, tol, barBreachMaxBars, barBreachStep, breachUseWicks)
+                            if strictBreach and useBarBreachCheckArg
+                                barBreached := f_barBreachScan(xOld, yOld, slope, xNow, isRes, tol, barBreachMaxBarsArg, barBreachStepArg, breachUseWicksArg)
 
                             if not barBreached
                                 float lineNow = f_lineAt(yOld, slope, xOld, xNow)
@@ -238,7 +239,7 @@ f_findBestTL(array<float> pPrices, array<int> pIdxs, bool isRes, float tol, int 
                                         better := true
                                     else if touches == bestTouches and absSlope < bestAbsSlope
                                         better := true
-                                    else if touches == bestTouches and absSlope == bestAbsSlope and distNow < bestDist
+                                    else if touches == bestTouches and math.abs(absSlope - bestAbsSlope) <= slopeEps and distNow < bestDist
                                         better := true
 
                                     if better
@@ -295,6 +296,7 @@ f_findBestTL_T(array<float> pPrices, array<int> pTimes, bool isRes, float tol, i
     int   bestTouches = -1
     float bestAbsSlope = 1e10
     float bestDist = 1e10
+    float slopeEps = math.max(syminfo.mintick * 0.1, 1e-10)
 
     int n = array.size(pPrices)
     if n >= 2
@@ -338,7 +340,7 @@ f_findBestTL_T(array<float> pPrices, array<int> pTimes, bool isRes, float tol, i
                                     better := true
                                 else if touches == bestTouches and absSlope < bestAbsSlope
                                     better := true
-                                else if touches == bestTouches and absSlope == bestAbsSlope and distNow < bestDist
+                                else if touches == bestTouches and math.abs(absSlope - bestAbsSlope) <= slopeEps and distNow < bestDist
                                     better := true
 
                                 if better
@@ -788,7 +790,7 @@ int supX1 = int(na)
 int supX2 = int(na)
 
 if bar_index > 0
-    [_hasRes, _resSlope, _resX1, _resY1, _resX2, _resY2] = f_findBestTL(pivotHighs_Price, pivotHighs_Idx, true, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true)
+    [_hasRes, _resSlope, _resX1, _resY1, _resX2, _resY2] = f_findBestTL(pivotHighs_Price, pivotHighs_Idx, true, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
     hasRes := _hasRes
     resSlope := _resSlope
     resX1 := _resX1
@@ -796,7 +798,7 @@ if bar_index > 0
     resX2 := _resX2
     resY2 := _resY2
 
-    [_hasSup, _supSlope, _supX1, _supY1, _supX2, _supY2] = f_findBestTL(pivotLows_Price, pivotLows_Idx, false, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true)
+    [_hasSup, _supSlope, _supX1, _supY1, _supX2, _supY2] = f_findBestTL(pivotLows_Price, pivotLows_Idx, false, tolA, bar_index - 1, close[1], minTouches, minSpacingAction, maxDistA, true, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
     hasSup := _hasSup
     supSlope := _supSlope
     supX1 := _supX1
@@ -1048,6 +1050,7 @@ if useFakeoutFilter
             confirmCnt := 1
             reclaimCnt := 0
             resHold := true
+            supHold := false
             if showLabels
                 label.new(bar_index, high, "BREAK?", style=label.style_label_down, textcolor=color.white, color=color.orange)
             if confirmCloses <= 1
@@ -1063,6 +1066,7 @@ if useFakeoutFilter
                 confirmCnt := 0
                 reclaimCnt := 0
                 resHold := false
+                supHold := false
         else if rawShort and not na(supHoldSlope)
             breakPending := true
             pendingDir := -1
@@ -1075,6 +1079,7 @@ if useFakeoutFilter
             confirmCnt := 1
             reclaimCnt := 0
             supHold := true
+            resHold := false
             if showLabels
                 label.new(bar_index, low, "BREAK?", style=label.style_label_up, textcolor=color.white, color=color.orange)
             if confirmCloses <= 1
@@ -1090,6 +1095,7 @@ if useFakeoutFilter
                 confirmCnt := 0
                 reclaimCnt := 0
                 supHold := false
+                resHold := false
     else
         int barsSince = bar_index - pendingBar
         float pendNow = f_lineAt(pendingY1, pendingSlope, pendingX1, bar_index)
@@ -1160,6 +1166,16 @@ if enterLong or enterShort
     entryBar := bar_index
     entryPx := close
 
+    array.clear(postLows_Price)
+    array.clear(postLows_Idx)
+    array.clear(postHighs_Price)
+    array.clear(postHighs_Idx)
+    sSlope := na
+    sX1 := na
+    sY1 := na
+    sX2 := na
+    sY2 := na
+
     if useBootstrapStop
         float entryATR = atr
         float bootStop = enterLong ? (low - entryATR * bootstrapATRMult) : (high + entryATR * bootstrapATRMult)
@@ -1223,7 +1239,7 @@ if inTrade
         float candY2 = na
 
         if tradeDir == 1
-            [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postLows_Price, postLows_Idx, false, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
+            [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postLows_Price, postLows_Idx, false, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
             if sf
                 candFound := true
                 candSlope := ss
@@ -1232,7 +1248,7 @@ if inTrade
                 candX2 := sx2
                 candY2 := sy2
         else if tradeDir == -1
-            [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postHighs_Price, postHighs_Idx, true, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false)
+            [sf, ss, sx1, sy1, sx2, sy2] = f_findBestTL(postHighs_Price, postHighs_Idx, true, tolS, bar_index, close, safetyMinTouches, minSpacingSafety, maxDistS, false, useBarBreachCheck, barBreachMaxBars, barBreachStep, breachUseWicks)
             if sf
                 candFound := true
                 candSlope := ss
