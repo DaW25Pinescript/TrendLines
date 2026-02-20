@@ -1,0 +1,15 @@
+//@version=6
+strategy("ToriTrades_BlankStrategy", overlay=true, initial_capital=10000, commission_type=strategy.commission.percent, commission_value=0.0)
+
+// Blank starter strategy.
+// Add your entry/exit conditions below.
+
+// Example placeholders (disabled by default):
+longCondition = false
+shortCondition = false
+
+if longCondition
+    strategy.entry("Long", strategy.long)
+
+if shortCondition
+    strategy.entry("Short", strategy.short)
