@@ -2,6 +2,7 @@
 
 ## Unreleased
 - Repo scaffolding + docs.
+- Added a V7 strategy patch note with corrected risk-based sizing, immediate bootstrap-stop exit condition, and trade-review label deduping guidance.
 
 ## v5 (script baseline)
 - Pivot-based 3-touch trendline breakout

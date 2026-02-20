@@ -1,0 +1,85 @@
+# ToriTrades_3TouchBreak_V7_Strategy — Critical Backtest/Risk Fixes
+
+Apply the following targeted edits to your strategy script.
+
+## 1) Strategy header: use fixed sizing when passing explicit `qty`
+
+Replace your `strategy(...)` declaration with:
+
+```pine
+strategy("ToriTrades_3TouchBreak_V7_Strategy", overlay=true, max_lines_count=200, max_labels_count=250, scale=scale.none, max_polylines_count=10, process_orders_on_close=true, default_qty_type=strategy.fixed, default_qty_value=1)
+```
+
+## 2) Entry sizing: risk per contract must use `stopDistance * syminfo.pointvalue`
+
+Replace your current `// STRATEGY ENTRY WITH POSITION SIZING` section with:
+
+```pine
+// STRATEGY ENTRY WITH POSITION SIZING (contract/shares qty)
+if usePositionSizing and not na(entryStop)
+    float riskAmount = strategy.equity * (riskPercent / 100.0)
+    float stopDistance = math.abs(entryPx - entryStop)
+    float pv = syminfo.pointvalue
+    float riskPerContract = stopDistance * (pv > 0 ? pv : 1.0)
+    if riskPerContract > 0
+        float qty = riskAmount / riskPerContract
+        qty := math.max(qty, 1)
+        if enterLong
+            strategy.entry("Long", strategy.long, qty=qty, comment="TL Break Long")
+        else
+            strategy.entry("Short", strategy.short, qty=qty, comment="TL Break Short")
+    else
+        if enterLong
+            strategy.entry("Long", strategy.long, comment="TL Break Long")
+        else
+            strategy.entry("Short", strategy.short, comment="TL Break Short")
+else
+    if enterLong
+        strategy.entry("Long", strategy.long, comment="TL Break Long")
+    else
+        strategy.entry("Short", strategy.short, comment="TL Break Short")
+```
+
+## 3) Immediate bootstrap safety: allow first active-bar stop trigger
+
+Replace exit conditions with:
+
+```pine
+bool exitLong  = evalClose and inTrade and tradeDir == 1 and not na(effSafetyNow) and close < effSafetyNow and (na(effSafetyPrev) or close[1] >= effSafetyPrev)
+bool exitShort = evalClose and inTrade and tradeDir == -1 and not na(effSafetyNow) and close > effSafetyNow and (na(effSafetyPrev) or close[1] <= effSafetyPrev)
+```
+
+## 4) Prevent trade-review label spam
+
+Add this state variable once in your state section:
+
+```pine
+var int lastPlottedClosed = -1
+```
+
+Then update your trade-review block to only plot on newly-closed trades:
+
+```pine
+if strategy.closedtrades > 0
+    int lastTradeIdx = strategy.closedtrades - 1
+    if lastTradeIdx != lastPlottedClosed
+        lastPlottedClosed := lastTradeIdx
+        string exitComment = strategy.closedtrades.comment(lastTradeIdx)
+        float entryPrice = strategy.closedtrades.entry_price(lastTradeIdx)
+        float exitPrice = strategy.closedtrades.exit_price(lastTradeIdx)
+        int exitBar = strategy.closedtrades.exit_bar_index(lastTradeIdx)
+        bool wasLong = strategy.closedtrades.entry_type(lastTradeIdx) == strategy.long
+        float pnl = wasLong ? (exitPrice - entryPrice) : (entryPrice - exitPrice)
+        color pnlColor = pnl >= 0 ? color.green : color.red
+        string pnlTxt = pnl >= 0 ? "WIN" : "LOSS"
+        label.new(exitBar, wasLong ? low : high, pnlTxt + "\n" + str.tostring(pnl, "#.##"), style=wasLong ? label.style_label_up : label.style_label_down, textcolor=color.white, color=pnlColor, size=size.tiny)
+```
+
+## 5) Optional safety sync with engine position
+
+```pine
+bool posNow = strategy.position_size != 0
+if posNow != inTrade
+    inTrade := posNow
+    tradeDir := strategy.position_size > 0 ? 1 : strategy.position_size < 0 ? -1 : 0
+```
